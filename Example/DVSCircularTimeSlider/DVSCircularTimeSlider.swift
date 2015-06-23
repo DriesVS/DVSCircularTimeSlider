@@ -42,7 +42,24 @@ class DVSCircularTimeSlider: UIControl {
         }
     }
     
-    private var timeLabel = UILabel()
+    private lazy var timeLabel: UILabel = {
+        [unowned self] in
+        let label = UILabel()
+        label.text = self.timeString
+        label.textAlignment = NSTextAlignment.Center
+        label.font = UIFont(name: self.fontName, size: self.fontSize)
+        label.adjustsFontSizeToFitWidth = true
+        self.addSubview(label)
+        // Constraints
+        var leading = NSLayoutConstraint(item: label, attribute: NSLayoutAttribute.Leading, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Leading, multiplier: 1, constant: 0)
+        var trailing = NSLayoutConstraint(item: label, attribute: NSLayoutAttribute.Trailing, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Trailing, multiplier: 1, constant: 0)
+        var top = NSLayoutConstraint(item: label, attribute: NSLayoutAttribute.Top, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Top, multiplier: 1, constant: 0)
+        var bottom = NSLayoutConstraint(item: label, attribute: NSLayoutAttribute.Bottom, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Bottom, multiplier: 1, constant: 0)
+        self.addConstraints([leading, trailing, top, bottom])
+        label.setTranslatesAutoresizingMaskIntoConstraints(false)
+        return label
+    }()
+    
     var fontSize: CGFloat = 30 {
         didSet {
             timeLabel.font = timeLabel.font.fontWithSize(fontSize)
@@ -53,9 +70,9 @@ class DVSCircularTimeSlider: UIControl {
             timeLabel.font = UIFont(name: fontName, size: fontSize)
         }
     }
+    
     var time = NSDate() {
         didSet {
-            isSecondCircle = (timeInRadians > RadianValuesInCircle.FullCircle) ? true : false
             timeLabel.text = timeString
             setNeedsDisplay()
         }
@@ -71,7 +88,10 @@ class DVSCircularTimeSlider: UIControl {
             setNeedsDisplay()
         }
     }
-    private var isSecondCircle = false
+    lazy private var isSecondCircle: Bool = {
+        [unowned self] in
+        return (self.timeInRadians > RadianValuesInCircle.FullCircle) ? true : false
+    }()
     
     private var timeInRadians: Double {
         let calender: NSCalendar = NSCalendar.currentCalendar()
@@ -94,28 +114,10 @@ class DVSCircularTimeSlider: UIControl {
 
     // MARK: - Initializers
     
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-    }
-
     required init(coder: NSCoder) {
         super.init(coder: coder)
         
         self.contentMode = UIViewContentMode.Redraw
-        
-        timeLabel.text = timeString
-        timeLabel.textAlignment = NSTextAlignment.Center
-        timeLabel.font = UIFont(name: fontName, size: fontSize)
-        timeLabel.adjustsFontSizeToFitWidth = true
-        self.addSubview(timeLabel)
-        var leading = NSLayoutConstraint(item: timeLabel, attribute: NSLayoutAttribute.Leading, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Leading, multiplier: 1, constant: 0)
-        var trailing = NSLayoutConstraint(item: timeLabel, attribute: NSLayoutAttribute.Trailing, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Trailing, multiplier: 1, constant: 0)
-        var top = NSLayoutConstraint(item: timeLabel, attribute: NSLayoutAttribute.Top, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Top, multiplier: 1, constant: 0)
-        var bottom = NSLayoutConstraint(item: timeLabel, attribute: NSLayoutAttribute.Bottom, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Bottom, multiplier: 1, constant: 0)
-        self.addConstraints([leading, trailing, top, bottom])
-        timeLabel.setTranslatesAutoresizingMaskIntoConstraints(false)
-        
-        isSecondCircle = (timeInRadians > RadianValuesInCircle.FullCircle) ? true : false
     }
     
     // MARK: - Time
@@ -164,7 +166,7 @@ class DVSCircularTimeSlider: UIControl {
         if angle > RadianValuesInCircle.ThreeQuarters && previousAngle < RadianValuesInCircle.Quarter  {
             if isSecondCircle {
                 if !stoppedRight {
-                    isSecondCircle = false
+                    self.isSecondCircle = false
                 }
             } else {
                 canHandleMoveLeft = false
