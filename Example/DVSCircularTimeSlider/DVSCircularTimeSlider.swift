@@ -251,9 +251,7 @@ class DVSCircularTimeSlider: UIControl {
             width: primaryCircleStrokeSize,
             height: primaryCircleStrokeSize)
         let primaryCircleRounedBeginningPath = UIBezierPath(ovalInRect:primaryCircleRounedBeginningRect)
-        primaryCircleRounedBeginningPath.lineWidth = 0
         primaryCircleRounedBeginningPath.fill()
-        primaryCircleRounedBeginningPath.stroke()
         
         
         let startAngle = 0 + radianOffset
@@ -282,15 +280,12 @@ class DVSCircularTimeSlider: UIControl {
             height: primaryCircleHandleRadius)
         let primaryCircleHandlePath = UIBezierPath(ovalInRect: primaryCircleHandleRect)
         primaryCircleHandlePath.fill()
-        primaryCircleHandlePath.stroke()
         
         // Second circle background
         if isSecondCircle {
             primaryCircleColor.colorWithAlphaComponent(0.1).set()
             let secondCirclePath = UIBezierPath(ovalInRect: shadowCircleRect)
-            secondCirclePath.lineWidth = 0
             secondCirclePath.fill()
-            secondCirclePath.stroke()
         }
         
         // Primary circle handle background
@@ -300,9 +295,7 @@ class DVSCircularTimeSlider: UIControl {
                 origin: endAnglePoint,
                 size: CGSizeMake(primaryCircleHandleRadius*2, primaryCircleHandleRadius*2))
             let primaryCircleHandleBackgroundPath = UIBezierPath(ovalInRect: primaryCircleHandleBackgroundRect)
-            primaryCircleHandleBackgroundPath.lineWidth = 0
             primaryCircleHandleBackgroundPath.fill()
-            primaryCircleHandleBackgroundPath.stroke()
         }
     }
     
