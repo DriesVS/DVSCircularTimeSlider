@@ -14,6 +14,7 @@ class DVSCircularTimeSlider: UIControl {
     @IBInspectable
     var primaryCircleColor: UIColor = UIColor(red: 47/255, green: 213/255, blue: 100/255, alpha: 1.0) {
         didSet {
+            circleLayer.fillColor = primaryCircleColor.colorWithAlphaComponent(0.1).CGColor
             setNeedsDisplay()
         }
     }
@@ -42,7 +43,50 @@ class DVSCircularTimeSlider: UIControl {
         }
     }
     
-    private var timeLabel = UILabel()
+    private var shouldDrawHelperCircle = false
+    var time: NSDate {
+        get {
+            return _time
+        }
+        set (newValue) {
+            if getRadiansFromTimeInDate(newValue) > RadianValuesInCircle.FullCircle {
+                shouldDrawHelperCircle = true
+                isSecondCircle = true
+            } else {
+                shouldDrawHelperCircle = false
+                isSecondCircle = false
+            }
+            _time = newValue
+        }
+    }
+    private var _time = NSDate() {
+        didSet {
+            timeLabel.text = timeString
+            setNeedsDisplay()
+        }
+    }
+    var timeString: String {
+        let formatter = NSDateFormatter()
+        formatter.timeStyle = NSDateFormatterStyle.ShortStyle
+        return formatter.stringFromDate(_time)
+    }
+    
+    private lazy var timeLabel: UILabel = {
+        [unowned self] in
+        let label = UILabel()
+        label.textAlignment = NSTextAlignment.Center
+        label.font = UIFont(name: self.fontName, size: self.fontSize)
+        label.adjustsFontSizeToFitWidth = true
+        self.addSubview(label)
+        // Time label constraints
+        var leading = NSLayoutConstraint(item: label, attribute: NSLayoutAttribute.Leading, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Leading, multiplier: 1, constant: 0)
+        var trailing = NSLayoutConstraint(item: label, attribute: NSLayoutAttribute.Trailing, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Trailing, multiplier: 1, constant: 0)
+        var top = NSLayoutConstraint(item: label, attribute: NSLayoutAttribute.Top, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Top, multiplier: 1, constant: 0)
+        var bottom = NSLayoutConstraint(item: label, attribute: NSLayoutAttribute.Bottom, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Bottom, multiplier: 1, constant: 0)
+        self.addConstraints([leading, trailing, top, bottom])
+        label.setTranslatesAutoresizingMaskIntoConstraints(false)
+        return label
+    }()
     var fontSize: CGFloat = 30 {
         didSet {
             timeLabel.font = timeLabel.font.fontWithSize(fontSize)
@@ -53,35 +97,20 @@ class DVSCircularTimeSlider: UIControl {
             timeLabel.font = UIFont(name: fontName, size: fontSize)
         }
     }
-    var time = NSDate() {
-        didSet {
-            isSecondCircle = (timeInRadians > RadianValuesInCircle.FullCircle) ? true : false
-            timeLabel.text = timeString
-            setNeedsDisplay()
-        }
-    }
-    var timeString: String {
-        let formatter = NSDateFormatter()
-        formatter.timeStyle = NSDateFormatterStyle.ShortStyle
-        return formatter.stringFromDate(time)
-    }
     
     private var isTracking = false {
         didSet {
             setNeedsDisplay()
         }
     }
-    private var isSecondCircle = false
     
-    private var timeInRadians: Double {
-        let calender: NSCalendar = NSCalendar.currentCalendar()
-        let flags: NSCalendarUnit = NSCalendarUnit.CalendarUnitHour | NSCalendarUnit.CalendarUnitMinute
-        let components = calender.components(flags, fromDate: time)
-        
-        let numberFromTime: Double = Double(components.hour) + Double(components.minute) / 60
-        let timeInRadians: Double = numberFromTime / 24 * RadianValuesInCircle.DoubleCircle
-        
-        return timeInRadians
+    private var isSecondCircle = false {
+        didSet {
+            if !shouldDrawHelperCircle {
+                animateSecondCircle(isSecondCircle)
+            }
+            setNeedsDisplay()
+        }
     }
     
     private struct RadianValuesInCircle {
@@ -94,28 +123,19 @@ class DVSCircularTimeSlider: UIControl {
 
     // MARK: - Initializers
     
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-    }
-
     required init(coder: NSCoder) {
         super.init(coder: coder)
-        
         self.contentMode = UIViewContentMode.Redraw
         
-        timeLabel.text = timeString
-        timeLabel.textAlignment = NSTextAlignment.Center
-        timeLabel.font = UIFont(name: fontName, size: fontSize)
-        timeLabel.adjustsFontSizeToFitWidth = true
-        self.addSubview(timeLabel)
-        var leading = NSLayoutConstraint(item: timeLabel, attribute: NSLayoutAttribute.Leading, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Leading, multiplier: 1, constant: 0)
-        var trailing = NSLayoutConstraint(item: timeLabel, attribute: NSLayoutAttribute.Trailing, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Trailing, multiplier: 1, constant: 0)
-        var top = NSLayoutConstraint(item: timeLabel, attribute: NSLayoutAttribute.Top, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Top, multiplier: 1, constant: 0)
-        var bottom = NSLayoutConstraint(item: timeLabel, attribute: NSLayoutAttribute.Bottom, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Bottom, multiplier: 1, constant: 0)
-        self.addConstraints([leading, trailing, top, bottom])
-        timeLabel.setTranslatesAutoresizingMaskIntoConstraints(false)
+        time = NSDate()
+        timeLabel.text = self.timeString
         
-        isSecondCircle = (timeInRadians > RadianValuesInCircle.FullCircle) ? true : false
+        circleLayer.fillColor = primaryCircleColor.colorWithAlphaComponent(0.1).CGColor
+        self.layer.addSublayer(circleLayer)
+    }
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
     }
     
     // MARK: - Time
@@ -126,36 +146,72 @@ class DVSCircularTimeSlider: UIControl {
         components.hour = Int(h)
         components.minute = Int(m)
         if let date = cal?.dateFromComponents(components) {
-            time = date
+            _time = date
         }
     }
     
-    func getTimeInHoursFromAngle(a: Double) -> Double {
+    private func getTimeInHoursFromAngle(a: Double) -> Double {
         return a / (RadianValuesInCircle.FullCircle / 12)
+    }
+    
+    private func getRadiansFromTimeInDate(t: NSDate) -> Double {
+        let calender: NSCalendar = NSCalendar.currentCalendar()
+        let flags: NSCalendarUnit = NSCalendarUnit.CalendarUnitHour | NSCalendarUnit.CalendarUnitMinute
+        let components = calender.components(flags, fromDate: t)
+        
+        let numberFromTime: Double = Double(components.hour) + Double(components.minute) / 60
+        let timeInRadians: Double = numberFromTime / 24 * RadianValuesInCircle.DoubleCircle
+        
+        return timeInRadians
+    }
+    
+    // MARK: - Animation
+    
+    private let circleLayer = CAShapeLayer()
+    private func animateSecondCircle(moveIn: Bool) {
+        let center = CGPoint(x: bounds.width/2, y: bounds.height/2)
+        let radius: CGFloat = min(bounds.width, bounds.height)/2 - max(primaryCircleStrokeSize, shadowCircleStrokeSize)/2 - primaryCircleHandleRadius
+        let shadowCircleRect = CGRect(
+            x: center.x - radius,
+            y: center.y - radius,
+            width: radius * 2,
+            height: radius * 2)
+        let circlePath = UIBezierPath(roundedRect: shadowCircleRect, cornerRadius: radius).CGPath
+        let pointPath = UIBezierPath(roundedRect: CGRect(origin: center, size: CGSize(width: 0.1, height: 0.1)), cornerRadius: 1).CGPath
+        
+        let anim = CABasicAnimation(keyPath: "path")
+        anim.toValue = (moveIn) ? circlePath : pointPath
+        anim.duration = 0.2
+        anim.timingFunction = CAMediaTimingFunction(name: kCAMediaTimingFunctionEaseInEaseOut)
+        anim.fillMode = kCAFillModeBoth
+        anim.removedOnCompletion = false
+        
+        circleLayer.path = (moveIn) ? pointPath : circlePath
+        circleLayer.addAnimation(anim, forKey: anim.keyPath)
     }
     
     // MARK: - Touch handlers
     
-    override func beginTrackingWithTouch(touch: UITouch, withEvent event: UIEvent) -> Bool {
-        isTracking = true
-        return true
-    }
-    
-    var canHandleMoveLeft = true
-    var canHandleMoveRight = true
-    var stoppedLeft = false {
+    private var canHandleMoveLeft = true
+    private var canHandleMoveRight = true
+    private var didStopOnLeftSide = false {
         didSet {
-            if stoppedLeft {
+            if didStopOnLeftSide {
                 setTimeWithHours(0, andMinutes: 0)
             }
         }
     }
-    var stoppedRight = false {
+    private var didStopOnRightSide = false {
         didSet {
-            if stoppedRight {
+            if didStopOnRightSide {
                 setTimeWithHours(23, andMinutes: 59)
             }
         }
+    }
+    
+    override func beginTrackingWithTouch(touch: UITouch, withEvent event: UIEvent) -> Bool {
+        isTracking = true
+        return true
     }
     
     override func continueTrackingWithTouch(touch: UITouch, withEvent event: UIEvent) -> Bool {
@@ -163,27 +219,28 @@ class DVSCircularTimeSlider: UIControl {
         let previousAngle = getAngleFromPoint(touch.previousLocationInView(self))
         if angle > RadianValuesInCircle.ThreeQuarters && previousAngle < RadianValuesInCircle.Quarter  {
             if isSecondCircle {
-                if !stoppedRight {
+                if !didStopOnRightSide {
                     isSecondCircle = false
+                    shouldDrawHelperCircle = false
                 }
             } else {
                 canHandleMoveLeft = false
-                stoppedLeft = true
+                didStopOnLeftSide = true
             }
-            if stoppedRight {
-                stoppedRight = false
+            if didStopOnRightSide {
+                didStopOnRightSide = false
             }
         } else if angle < RadianValuesInCircle.Quarter && previousAngle > RadianValuesInCircle.ThreeQuarters  {
             if isSecondCircle {
                 canHandleMoveRight = false
-                stoppedRight = true
+                didStopOnRightSide = true
             } else {
-                if !stoppedLeft {
+                if !didStopOnLeftSide {
                     isSecondCircle = true
                 }
             }
-            if stoppedLeft {
-                stoppedLeft = false
+            if didStopOnLeftSide {
+                didStopOnLeftSide = false
             }
         } else if (canHandleMoveRight && canHandleMoveLeft) ||
         (!canHandleMoveLeft && angle - previousAngle > 0.0 && angle < RadianValuesInCircle.Quarter) ||
@@ -206,12 +263,12 @@ class DVSCircularTimeSlider: UIControl {
         isTracking = false
         canHandleMoveLeft = true
         canHandleMoveRight = true
-        stoppedLeft = false
-        stoppedRight = false
+        didStopOnLeftSide = false
+        didStopOnRightSide = false
         sendActionsForControlEvents(UIControlEvents.ValueChanged)
     }
     
-    func getAngleFromPoint(p: CGPoint) -> Double {
+    private func getAngleFromPoint(p: CGPoint) -> Double {
         let deltaY = p.y - self.frame.size.height/2
         let deltaX = p.x - self.frame.size.width/2
         let angleEndPoint = Double(atan2(deltaY, deltaX) - radianOffset)
@@ -220,11 +277,10 @@ class DVSCircularTimeSlider: UIControl {
         }
         return angleEndPoint
     }
-    
+
     // MARK: - Draw UI
     
     private let radianOffset = -CGFloat(RadianValuesInCircle.Quarter)
-
     override func drawRect(rect: CGRect) {
         let center = CGPoint(x: bounds.width/2, y: bounds.height/2)
         let radius: CGFloat = min(bounds.width, bounds.height)/2 - max(primaryCircleStrokeSize, shadowCircleStrokeSize)/2 - primaryCircleHandleRadius
@@ -249,13 +305,10 @@ class DVSCircularTimeSlider: UIControl {
             width: primaryCircleStrokeSize,
             height: primaryCircleStrokeSize)
         let primaryCircleRounedBeginningPath = UIBezierPath(ovalInRect:primaryCircleRounedBeginningRect)
-        primaryCircleRounedBeginningPath.lineWidth = 0
         primaryCircleRounedBeginningPath.fill()
-        primaryCircleRounedBeginningPath.stroke()
-        
         
         let startAngle = 0 + radianOffset
-        let endAngle = CGFloat(timeInRadians) + radianOffset
+        let endAngle = CGFloat(getRadiansFromTimeInDate(_time)) + radianOffset
         
         let primaryCircleForTimePath = UIBezierPath(
             arcCenter: center,
@@ -280,15 +333,12 @@ class DVSCircularTimeSlider: UIControl {
             height: primaryCircleHandleRadius)
         let primaryCircleHandlePath = UIBezierPath(ovalInRect: primaryCircleHandleRect)
         primaryCircleHandlePath.fill()
-        primaryCircleHandlePath.stroke()
         
-        // Second circle background
-        if isSecondCircle {
+        // Second replacement circle background
+        if shouldDrawHelperCircle {
             primaryCircleColor.colorWithAlphaComponent(0.1).set()
             let secondCirclePath = UIBezierPath(ovalInRect: shadowCircleRect)
-            secondCirclePath.lineWidth = 0
             secondCirclePath.fill()
-            secondCirclePath.stroke()
         }
         
         // Primary circle handle background
@@ -298,9 +348,7 @@ class DVSCircularTimeSlider: UIControl {
                 origin: endAnglePoint,
                 size: CGSizeMake(primaryCircleHandleRadius*2, primaryCircleHandleRadius*2))
             let primaryCircleHandleBackgroundPath = UIBezierPath(ovalInRect: primaryCircleHandleBackgroundRect)
-            primaryCircleHandleBackgroundPath.lineWidth = 0
             primaryCircleHandleBackgroundPath.fill()
-            primaryCircleHandleBackgroundPath.stroke()
         }
     }
     
