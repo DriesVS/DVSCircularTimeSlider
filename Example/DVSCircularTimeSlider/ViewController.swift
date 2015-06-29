@@ -28,7 +28,7 @@ class ViewController: UIViewController {
 
         let cal = NSCalendar(identifier: NSCalendarIdentifierGregorian)
         let components = NSDateComponents()
-        components.hour = 14
+        components.hour = 7
         components.minute = 30
         if let date = cal?.dateFromComponents(components) {
             slider.time = date
