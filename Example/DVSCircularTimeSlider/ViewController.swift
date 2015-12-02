@@ -41,7 +41,7 @@ class ViewController: UIViewController {
     }
     
     func circularTimeSliderValueChanged(slider: DVSCircularTimeSlider) {
-        println("Current time: \(slider.timeString)")
+        print("Current time: \(slider.timeString)")
     }
     
 }

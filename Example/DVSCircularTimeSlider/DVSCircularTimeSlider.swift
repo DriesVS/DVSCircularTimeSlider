@@ -84,7 +84,7 @@ class DVSCircularTimeSlider: UIControl {
         var top = NSLayoutConstraint(item: label, attribute: NSLayoutAttribute.Top, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Top, multiplier: 1, constant: 0)
         var bottom = NSLayoutConstraint(item: label, attribute: NSLayoutAttribute.Bottom, relatedBy: NSLayoutRelation.Equal, toItem: self, attribute: NSLayoutAttribute.Bottom, multiplier: 1, constant: 0)
         self.addConstraints([leading, trailing, top, bottom])
-        label.setTranslatesAutoresizingMaskIntoConstraints(false)
+        label.translatesAutoresizingMaskIntoConstraints = false
         return label
     }()
     var fontSize: CGFloat = 30 {
@@ -123,7 +123,7 @@ class DVSCircularTimeSlider: UIControl {
 
     // MARK: - Initializers
     
-    required init(coder: NSCoder) {
+    required init?(coder: NSCoder) {
         super.init(coder: coder)
         self.contentMode = UIViewContentMode.Redraw
         
@@ -156,7 +156,7 @@ class DVSCircularTimeSlider: UIControl {
     
     private func getRadiansFromTimeInDate(t: NSDate) -> Double {
         let calender: NSCalendar = NSCalendar.currentCalendar()
-        let flags: NSCalendarUnit = NSCalendarUnit.CalendarUnitHour | NSCalendarUnit.CalendarUnitMinute
+        let flags: NSCalendarUnit = [NSCalendarUnit.Hour, NSCalendarUnit.Minute]
         let components = calender.components(flags, fromDate: t)
         
         let numberFromTime: Double = Double(components.hour) + Double(components.minute) / 60
@@ -209,12 +209,12 @@ class DVSCircularTimeSlider: UIControl {
         }
     }
     
-    override func beginTrackingWithTouch(touch: UITouch, withEvent event: UIEvent) -> Bool {
+    override func beginTrackingWithTouch(touch: UITouch, withEvent event: UIEvent?) -> Bool {
         isTracking = true
         return true
     }
     
-    override func continueTrackingWithTouch(touch: UITouch, withEvent event: UIEvent) -> Bool {
+    override func continueTrackingWithTouch(touch: UITouch, withEvent event: UIEvent?) -> Bool {
         let angle = getAngleFromPoint(touch.locationInView(self))
         let previousAngle = getAngleFromPoint(touch.previousLocationInView(self))
         if angle > RadianValuesInCircle.ThreeQuarters && previousAngle < RadianValuesInCircle.Quarter  {
@@ -259,7 +259,7 @@ class DVSCircularTimeSlider: UIControl {
         return true
     }
     
-    override func endTrackingWithTouch(touch: UITouch, withEvent event: UIEvent) {
+    override func endTrackingWithTouch(touch: UITouch?, withEvent event: UIEvent?) {
         isTracking = false
         canHandleMoveLeft = true
         canHandleMoveRight = true
@@ -287,7 +287,7 @@ class DVSCircularTimeSlider: UIControl {
         
         // Shadow circle
         shadowCircleColor.set()
-        let shadowCircleOffset = primaryCircleHandleRadius*2
+//        let shadowCircleOffset = primaryCircleHandleRadius*2
         let shadowCircleRect = CGRect(
             x: center.x - radius,
             y: center.y - radius,
