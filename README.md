@@ -3,7 +3,7 @@
 ## What is this?
 DVSCircularTimeSlider is a circular slider control made for easily adjusting the time, written in Swift. It shows a minimalist circle which the user can adjust with the handle. Works in both landscape and portrait mode.
 
-![screenshot](DVSCircularTimeSliderScreenshot.png)
+![screenshot](screenshot.png)
 
 ## Installation
 Download the repository and simply drag `DVSCircularTimeSlider.swift` in your project.
