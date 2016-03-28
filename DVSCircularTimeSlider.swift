@@ -97,6 +97,11 @@ class DVSCircularTimeSlider: UIControl {
             timeLabel.font = UIFont(name: fontName, size: fontSize)
         }
     }
+    var timeLabelColor: UIColor = UIColor.blackColor() {
+        didSet {
+            timeLabel.textColor = timeLabelColor
+        }
+    }
     
     private var isTracking = false {
         didSet {
